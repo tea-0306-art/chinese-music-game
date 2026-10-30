@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>國樂樂器演奏法遊戲</title>
+    <style>
+        /* --- 1. 基礎設定 --- */
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Noto+Sans+TC:wght@500;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #FFF5E1;
+            /* 背景加上一點格紋，比較有質感 */
+            background-image: 
+                linear-gradient(#FFE4C4 1px, transparent 1px),
+                linear-gradient(90deg, #FFE4C4 1px, transparent 1px);
+            background-size: 20px 20px;
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            user-select: none;
+            cursor: default;
+        }
+
+        body.is-dragging { cursor: grabbing; }
+
+        /* --- 2. 頂部記分板 --- */
+        header {
+            flex: 0 0 auto; /* 固定高度 */
+            text-align: center;
+            background: #FF9AA2;
+            border-bottom: 4px solid #FF7E87;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 20px;
+        }
+
+        h1 {
+            font-family: 'Fredoka One', cursive;
+            color: #fff;
+            text-shadow: 2px 2px 0px #FF6F61;
+            font-size: 1.5rem;
+            margin: 0;
+        }
+
+        .status-board { display: flex; gap: 10px; color: white; font-weight: bold; }
+        .score-box, .time-box {
+            background: rgba(255,255,255,0.2);
+            padding: 5px 12px;
+            border-radius: 15px;
+            border: 2px solid white;
+            font-size: 1.1rem;
+        }
+
+        /* --- 3. 遊戲主掉落區 --- */
+        #game-area {
+            flex: 1 1 auto; /* 佔滿剩餘空間 */
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 樂器卡片 */
+        .instrument {
+            position: absolute;
+            width: 85px;
+            height: 105px;
+            background: white;
+            border: 3px solid #555;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: grab;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            z-index: 10;
+            touch-action: none; /* 關鍵：防止觸控捲動 */
+        }
+        .instrument img { width: 45px; height: 45px; object-fit: contain; pointer-events: none; margin-bottom: 4px;}
+        .instrument span { font-size: 0.9rem; font-weight: bold; color: #333; pointer-events: none; }
+        .instrument:active { transform: scale(1.05); z-index: 1000; border-color: #FF6F61; }
+
+        /* --- 4. 底部籃子區 (無縫接軌版) --- */
+        #baskets-container {
+            flex: 0 0 160px; /* 固定底部高度 */
+            display: flex;
+            position: relative;
+            background: #fff; 
+        }
+
+        /* 判定紅線 */
+        #scoring-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 8px;
+            background: #FF5252; /* 鮮紅色 */
+            z-index: 50;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        /* 線上面的提示文字 */
+        #scoring-line::after {
+            content: '⬇️ 拉過這條紅線得分 ⬇️';
+            position: absolute;
+            top: -25px;
+            width: 100%;
+            text-align: center;
+            color: #FF5252;
+            font-weight: bold;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+        }
+
+        .basket {
+            flex: 1; /* 四個籃子平分寬度 */
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 2px rgba(0,0,0,0.3);
+            position: relative;
+            border-right: 2px solid rgba(255,255,255,0.5); 
+        }
+
+        .basket:last-child { border-right: none; }
+
+        /* 籃子顏色設定 */
+        #basket-wind { background-color: #FF9AA2; }       /* 吹 */
+        #basket-plucked { background-color: #FFDAC1; }    /* 彈 */
+        #basket-bowed { background-color: #B5EAD7; }      /* 拉 */
+        #basket-percussion { background-color: #C7CEEA; } /* 打 */
+
+        /* 籃子標籤小字 */
+        .basket-label { font-size: 1rem; margin-top: 5px; opacity: 0.8; }
+
+        /* --- 5. 彈窗與按鈕 --- */
+        .modal-screen {
+            position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.98);
+            padding: 25px;
+            border-radius: 20px;
+            border: 6px solid #FFDAC1;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+            z-index: 2000;
+            width: 85%; max-width: 450px;
+        }
+        .modal-screen h2 { margin: 0 0 15px 0; color: #FF9AA2; font-size: 1.8rem; }
+        
+        button {
+            border: none; padding: 10px 18px; margin: 5px; border-radius: 12px;
+            font-size: 1rem; cursor: pointer; font-weight: bold; color: white;
+            transition: transform 0.1s;
+        }
+        button:active { transform: scale(0.95); }
+        .btn-speed { background-color: #FFB7B2; }
+        .btn-speed.active { background-color: #FF6F61; border: 2px solid white; box-shadow: 0 0 5px #FF6F61; }
+        .btn-time { background-color: #A0C4FF; }
+        .btn-time.active { background-color: #4D96FF; border: 2px solid white; box-shadow: 0 0 5px #4D96FF; }
+        .action-btn { background-color: #B5EAD7; color: #00695C; font-size: 1.2rem; padding: 12px 30px; width: 100%; margin-top: 15px; }
+
+        /* 遊戲結束 */
+        #game-over-screen {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 3000;
+            flex-direction: column; justify-content: center; align-items: center; color: white;
+        }
+        #final-score { font-size: 4rem; color: #B5EAD7; margin: 10px 0; font-weight: bold; }
+
+
+/* 拖曳到籃子時卡片保持可見 */
+#game-area { overflow:visible; z-index:20; }
+#baskets-container { z-index:10; }
+/* 完成分類的樂器會留在底下四個籃子裡 */
+#baskets-container { flex-basis: 202px; min-height: 202px; }
+.basket { justify-content: flex-start; padding: 14px 5px 8px; min-width:0; box-sizing:border-box; gap:8px; overflow:hidden; }
+.basket-title { font-size:clamp(1.45rem, 3vw, 2.2rem); line-height:1; flex-shrink:0; }
+.basket-title small { display:block; font-size:.72rem; margin-top:6px; }
+.basket-items { width:100%; flex:1; min-height:0; display:flex; align-content:flex-start; flex-wrap:wrap; justify-content:center; gap:4px; overflow-y:auto; padding:3px; box-sizing:border-box; }
+.basket-chip { background:rgba(255,255,255,.92); color:#394055; text-shadow:none; border-radius:9px; font-weight:800; font-size:clamp(.66rem,1.5vw,.83rem); padding:4px 6px; box-shadow:0 2px 4px #0001; animation:chip-in .25s ease-out; white-space:nowrap; }
+@keyframes chip-in { from { transform:scale(.3);opacity:0 } to { transform:scale(1);opacity:1 } }
+.instrument { touch-action:none; }
+.instrument.dragging { z-index:200; box-shadow:0 8px 22px #0004; }
+.score-float { position:fixed; z-index:5000; transform:translateX(-50%); pointer-events:none; font-size:2.25rem; font-weight:900; text-shadow:0 2px 0 white; animation:score-pop .8s ease-out forwards; }
+@keyframes score-pop { 0% { opacity:0; transform:translate(-50%,12px) scale(.75) } 20% { opacity:1; transform:translate(-50%,0) scale(1.15) } 100% { opacity:0; transform:translate(-50%,-50px) scale(1) } }
+@media (max-width:600px) { #baskets-container{ flex-basis:180px; min-height:180px } header{padding:8px 6px} h1{font-size:1rem} .status-board{gap:3px} .score-box,.time-box{font-size:.82rem;padding:4px 5px} .instrument{width:70px;height:84px} .instrument span{font-size:.78rem} #scoring-line::after{font-size:.73rem;letter-spacing:0} }
+
+
+        .modal-screen {max-height:90dvh;overflow-y:auto;box-sizing:border-box}
+        .identity-row {display:flex;gap:10px;margin:9px 0;}
+        .identity-row label{flex:1;text-align:left;font-weight:800;color:#596176;font-size:.9rem}
+        .identity-row input{display:block;width:100%;box-sizing:border-box;margin-top:5px;padding:10px;border-radius:10px;border:2px solid #d4dceb;font-size:1rem;background:white}
+        #leaderboard-screen{display:none;max-width:740px;width:94%;}
+        #leaderboard-body{max-height:42vh;overflow:auto;text-align:left}
+        #leaderboard-body table{width:100%;border-collapse:collapse;font-size:.9rem}
+        #leaderboard-body th,#leaderboard-body td{padding:9px 7px;border-bottom:1px solid #e4e8ee;text-align:left}
+        #leaderboard-body th{position:sticky;top:0;background:#fff4ed}
+        .btn-neutral{background:#778ba3}.btn-danger{background:#c95666}
+        #class-display{font-size:.9rem;background:#fff8;border-radius:10px;padding:6px;color:#6b3650;font-weight:bold}
+        @media(max-width:600px){.identity-row{flex-direction:column}.modal-screen{padding:14px}.btn-speed{padding:8px 7px;margin:3px;font-size:.84rem}header{flex-wrap:wrap;gap:4px}}
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🎪 國樂樂器分類</h1>
+        <div class="status-board">
+            <div id="class-display">尚未選擇隊伍</div><div class="score-box">得分：<span id="score">0</span></div>
+            <div class="time-box">時間: <span id="timer">00:00</span></div><div class="time-box">✅ <span id="correct-count">0</span>　❌ <span id="wrong-count">0</span></div>
+        </div>
+    </header>
+
+    <div id="game-area"></div>
+
+    <div id="baskets-container">
+        <div id="scoring-line"></div> 
+
+        <div class="basket" id="basket-wind" data-type="wind">
+            <div class="basket-title">吹 <small>吹管</small></div><div class="basket-items" id="items-wind"></div>
+        </div>
+        <div class="basket" id="basket-plucked" data-type="plucked">
+            <div class="basket-title">彈 <small>彈撥</small></div><div class="basket-items" id="items-plucked"></div>
+        </div>
+        <div class="basket" id="basket-bowed" data-type="bowed">
+            <div class="basket-title">拉 <small>拉弦</small></div><div class="basket-items" id="items-bowed"></div>
+        </div>
+        <div class="basket" id="basket-percussion" data-type="percussion">
+            <div class="basket-title">打 <small>打擊</small></div><div class="basket-items" id="items-percussion"></div>
+        </div>
+    </div>
+
+    <div id="rules-screen" class="modal-screen">
+        <h2>📜 怎麼玩？</h2>
+        <div style="text-align: left; line-height: 1.6; color: #555; padding: 0 10px;">
+            1. 樂器從天而降。<br>
+            2. 用手指或滑鼠<strong>按住樂器</strong>。<br>
+            3. 拖到下方對應的<strong>顏色通道</strong>。<br>
+            4. 拖進正確籃子：<strong>樂器會留下、立即加分</strong>。<br>5. 放錯籃子：<strong>立即扣 100 分</strong>，還能重新挑戰！
+        </div>
+        <button class="action-btn" onclick="showSettings()">我知道了</button>
+    </div>
+
+    <div id="controls" class="modal-screen" style="display: none;">
+        <h2>⚙️ 班級競賽設定</h2>
+        <div class="identity-row"><label>班級<input id="class-name" type="text" maxlength="25" placeholder="例如：501" autocomplete="off"></label><label>隊伍名稱<input id="team-name" type="text" maxlength="30" placeholder="例如：第一組" autocomplete="off"></label></div>
+        <div style="font-size:.82rem;color:#667086">同一班每組玩完會自動存入本機成績紀錄。</div>
+        <p style="margin-bottom:5px; font-weight:bold; color:#666;">⏱️ 時間</p>
+        <div style="margin-bottom: 15px;">
+            <button class="btn-time active" onclick="setTime(1, this)">1 分鐘</button>
+            <button class="btn-time" onclick="setTime(2, this)">2 分鐘</button>
+            <button class="btn-time" onclick="setTime(3, this)">3 分鐘</button>
+        </div>
+        <p style="margin-bottom:5px; font-weight:bold; color:#666;">🚀 速度與分數</p>
+        <div>
+            <button class="btn-speed" onclick="setSpeed(1, this)">最慢<br><span style="font-size:0.7em">+180</span></button>
+            <button class="btn-speed" onclick="setSpeed(2, this)">慢<br><span style="font-size:0.7em">+190</span></button>
+            <button class="btn-speed active" onclick="setSpeed(3, this)">正常<br><span style="font-size:0.7em">+200</span></button>
+            <button class="btn-speed" onclick="setSpeed(4, this)">快<br><span style="font-size:0.7em">+210</span></button>
+            <button class="btn-speed" onclick="setSpeed(5, this)">最快<br><span style="font-size:0.7em">+220</span></button>
+        </div>
+        <button class="action-btn" onclick="startGame()">開始遊戲！</button>
+        <button class="btn-neutral" onclick="showLeaderboard()">🏆 查看班級成績紀錄</button>
+    </div>
+
+    <div id="game-over-screen">
+        <h2>🎉 時間到！</h2>
+        <div>本次得分</div>
+        <div id="final-score">0</div><div id="final-identity"></div><div id="final-stats"></div><div style="font-size:.85rem;color:#d5ebdd">此局成績已記錄在目前瀏覽器</div>
+        <button class="action-btn" style="background:#FF9AA2; width: auto; padding: 10px 40px;" onclick="resetGame()">下一組／再玩一次</button>
+        <button class="btn-neutral" onclick="showLeaderboard()">🏆 查看排行榜</button>
+    </div>
+
+    <div id="leaderboard-screen" class="modal-screen">
+        <h2>🏆 班級競賽成績</h2>
+        <div class="identity-row"><label>選擇班級<input id="filter-class" placeholder="留白顯示全部班級" oninput="renderLeaderboard()"></label></div>
+        <div id="leaderboard-summary" style="margin:8px;color:#536075;font-weight:bold"></div>
+        <div id="leaderboard-body"></div>
+        <div style="font-size:.83rem;color:#6c7784;text-align:left;margin-top:10px">紀錄儲存在目前瀏覽器內，清除瀏覽資料、換設備或使用無痕模式可能遺失。建議每堂課結束匯出 CSV 備份。</div>
+        <button class="btn-neutral" onclick="exportCSV()">⬇ 匯出全部成績 CSV</button>
+        <button class="btn-danger" onclick="clearClassRecords()">清除目前篩選班級紀錄</button>
+        <button class="action-btn" onclick="closeLeaderboard()">返回</button>
+    </div>
+    <script>
+        // --- 樂器資料庫 ---
+        const instrumentsData = {
+            wind: ['嗩吶', '中國笛', '曲笛', '壎', '笙', '竽', '排笙', '葫蘆絲'],
+            plucked: ['琵琶', '柳琴', '三弦', '揚琴', '古箏', '阮', '中阮'],
+            bowed: ['二胡', '椰胡', '革胡', '倍革胡', '高胡', '馬頭琴'],
+            percussion: ['拍板', '木魚', '編鐘', '堂鼓', '鑼', '響盞', '柷']
+        };
+
+        // --- 全域變數 ---
+        const STORAGE_KEY = 'guoyue_class_scores_v1';
+        let sessionClass = '', sessionTeam = '', previousPanel = 'controls';
+        let fallbackRecords = [];
+        function getRecords(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch(e){return fallbackRecords}}
+        function saveRecords(records){fallbackRecords=records;try{localStorage.setItem(STORAGE_KEY,JSON.stringify(records));return true}catch(e){return false}}
+        function safeText(s){return String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+        function showLeaderboard(){
+            previousPanel=document.getElementById('game-over-screen').style.display==='flex'?'game-over-screen':'controls';
+            document.getElementById('controls').style.display='none';
+            document.getElementById('game-over-screen').style.display='none';
+            document.getElementById('leaderboard-screen').style.display='block';
+            document.getElementById('filter-class').value=document.getElementById('class-name').value.trim()||sessionClass;
+            renderLeaderboard();
+        }
+        function closeLeaderboard(){document.getElementById('leaderboard-screen').style.display='none';document.getElementById(previousPanel).style.display=previousPanel==='game-over-screen'?'flex':'block'}
+        function filteredRecords(){const f=document.getElementById('filter-class').value.trim().toLowerCase();return getRecords().filter(r=>!f||r.className.toLowerCase().includes(f))}
+        function renderLeaderboard(){
+            const rows=filteredRecords().sort((a,b)=>b.score-a.score||a.date.localeCompare(b.date));
+            const groups=new Set(rows.map(r=>r.className+'｜'+r.teamName));
+            document.getElementById('leaderboard-summary').textContent=`共 ${rows.length} 場紀錄｜${groups.size} 組隊伍`;
+            const body=document.getElementById('leaderboard-body');
+            if(!rows.length){body.textContent='目前沒有符合的成績紀錄。';return}
+            body.innerHTML='<table><thead><tr><th>名次</th><th>班級</th><th>隊伍</th><th>分數</th><th>答對／答錯</th><th>難度</th><th>日期時間</th></tr></thead><tbody>' + rows.map((r,i)=>`<tr><td>${i+1}</td><td>${safeText(r.className)}</td><td>${safeText(r.teamName)}</td><td><b>${r.score}</b></td><td>${r.correct}／${r.wrong}</td><td>${r.speed}</td><td>${safeText(r.date)}</td></tr>`).join('')+'</tbody></table>';
+        }
+        function exportCSV(){
+            const records=getRecords();
+            if(!records.length){alert('目前還沒有成績紀錄');return}
+            const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+            const rows=[['日期時間','班級','隊伍','得分','答對次數','答錯次數','掉落速度級別','時間(秒)'],...records.map(r=>[r.date,r.className,r.teamName,r.score,r.correct,r.wrong,r.speed,r.duration])];
+            const csv='﻿'+rows.map(row=>row.map(q).join(',')).join('\r\n');
+            const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+            const a=document.createElement('a');a.href=url;a.download='國樂吹彈拉打_班級成績_'+new Date().toLocaleDateString('sv-SE')+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+        }
+        function clearClassRecords(){
+            const filter=document.getElementById('filter-class').value.trim();
+            if(!filter){alert('請先輸入完整班級名稱，避免誤刪所有班級紀錄。');return}
+            if(!confirm(`確定要清除「${filter}」班的全部紀錄嗎？此動作無法復原。`))return;
+            saveRecords(getRecords().filter(r=>r.className!==filter));renderLeaderboard();
+        }
+        let score = 0;
+        let correctCount = 0, wrongCount = 0, spawnTimeout;
+        let gameDuration = 60;
+        let remainingTime = 0;
+        
+        // ** 分數與速度設定 (已更新邏輯) **
+        let speedSettings = {
+            1: { spawnRate: 3000, dropSpeed: 1.0, points: 180 }, // 最慢
+            2: { spawnRate: 2500, dropSpeed: 1.5, points: 190 }, // 慢
+            3: { spawnRate: 2000, dropSpeed: 2.5, points: 200 }, // 正常
+            4: { spawnRate: 1500, dropSpeed: 3.5, points: 210 }, // 快
+            5: { spawnRate: 1000, dropSpeed: 5.0, points: 220 }  // 最快
+        };
+        
+        let currentSpeed = 3;
+        let isPlaying = false;
+        let timerInterval, animationFrame;
+        let activeInstruments = [];
+        let audioCtx;
+
+        // --- 音效模組 ---
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            if (type === 'correct') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1318, now);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                
+                setTimeout(() => {
+                    const osc2 = audioCtx.createOscillator();
+                    const gain2 = audioCtx.createGain();
+                    osc2.frequency.setValueAtTime(1046, audioCtx.currentTime);
+                    gain2.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                    osc2.connect(gain2).connect(audioCtx.destination);
+                    osc2.start(); osc2.stop(audioCtx.currentTime + 0.4);
+                }, 100);
+            } else {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.linearRampToValueAtTime(50, now + 0.3);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+            }
+            
+            osc.connect(gain).connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + (type==='correct'?0.1:0.3));
+        }
+
+        // --- 介面控制 ---
+        function showSettings() {
+            document.getElementById('rules-screen').style.display = 'none';
+            document.getElementById('controls').style.display = 'block';
+            initAudio();
+        }
+        function setTime(min, button) {
+            gameDuration = min * 60;
+            document.querySelectorAll('.btn-time').forEach(b => b.classList.remove('active'));
+            button.classList.add('active');
+        }
+        function setSpeed(lvl, button) {
+            currentSpeed = lvl;
+            document.querySelectorAll('.btn-speed').forEach(b => b.classList.remove('active'));
+            button.classList.add('active');
+        }
+        function resetGame() {
+            document.getElementById('game-over-screen').style.display = 'none';
+            document.getElementById('controls').style.display = 'block';
+        }
+
+        // --- 遊戲核心 ---
+        function startGame() {
+            const c=document.getElementById('class-name').value.trim();
+            const t=document.getElementById('team-name').value.trim();
+            if(!c||!t){alert('請先輸入班級和隊伍名稱，再開始遊戲喔！');return}
+            sessionClass=c;sessionTeam=t;
+            document.getElementById('class-display').textContent=c+'｜'+t;
+            document.getElementById('controls').style.display = 'none';
+            score = 0;
+            remainingTime = gameDuration;
+            activeInstruments = [];
+            correctCount = 0; wrongCount = 0;
+            Object.keys(instrumentsData).forEach(type => document.getElementById("items-"+type).replaceChildren());
+            clearTimeout(spawnTimeout); clearInterval(timerInterval); cancelAnimationFrame(animationFrame);
+            isPlaying = true;
+            updateUI();
+            
+            // 清空舊元素
+            document.getElementById('game-area').innerHTML = '';
+
+            // 計時器
+            timerInterval = setInterval(() => {
+                remainingTime--;
+                updateUI();
+                if (remainingTime <= 0) endGame();
+            }, 1000);
+
+            spawnInstrument();
+            animationFrame = requestAnimationFrame(gameLoop);
+        }
+
+        function updateUI() {
+            document.getElementById('score').innerText = score;
+            document.getElementById("correct-count").textContent=correctCount;
+            document.getElementById("wrong-count").textContent=wrongCount;
+            const m = Math.floor(remainingTime / 60).toString().padStart(2, '0');
+            const s = (remainingTime % 60).toString().padStart(2, '0');
+            document.getElementById('timer').innerText = `${m}:${s}`;
+        }
+
+        function spawnInstrument() {
+            if (!isPlaying) return;
+            
+            // 隨機選樂器
+            const types = Object.keys(instrumentsData);
+            const type = types[Math.floor(Math.random() * types.length)];
+            const name = instrumentsData[type][Math.floor(Math.random() * instrumentsData[type].length)];
+            
+            const areaWidth = document.getElementById('game-area').offsetWidth;
+            const startX = Math.random() * (areaWidth - 100);
+
+            const el = document.createElement('div');
+            el.className = 'instrument';
+            el.dataset.type = type;
+            el.dataset.name = name;
+            el.style.left = startX + 'px';
+            el.style.top = '-120px';
+            el.innerHTML = `<img src="https://cdn-icons-png.flaticon.com/512/3293/3293816.png"><span>${name}</span>`;
+
+            setupDrag(el);
+            document.getElementById('game-area').appendChild(el);
+
+            activeInstruments.push({
+                el: el,
+                y: -120,
+                x: startX,
+                speed: speedSettings[currentSpeed].dropSpeed + Math.random()*0.5,
+                isDragging: false
+            });
+
+            spawnTimeout = setTimeout(spawnInstrument, speedSettings[currentSpeed].spawnRate);
+        }
+
+        function gameLoop() {
+            if (!isPlaying) return;
+
+            const limitY = document.getElementById("game-area").offsetHeight + 10; 
+
+            [...activeInstruments].forEach((item) => {
+                if (!item.isDragging) {
+                    item.y += item.speed;
+                    item.el.style.top = item.y + 'px';
+
+                    if (item.y > limitY) {
+                        item.el.remove();
+                        const idx = activeInstruments.indexOf(item);
+                        if (idx >= 0) activeInstruments.splice(idx, 1);
+                    }
+                }
+            });
+            animationFrame = requestAnimationFrame(gameLoop);
+        }
+
+        // --- 拖曳與判定 ---
+        function setupDrag(el) {
+            let startX, startY, initX, initY;
+            
+            const getPointerPos = (e) => {
+                return e.touches ? { x: e.touches[0].clientX, y: e.touches[0].clientY } 
+                                 : { x: e.clientX, y: e.clientY };
+            };
+
+            const dragStart = (e) => {
+                if (!isPlaying) return;
+                const item = activeInstruments.find(i => i.el === el);
+                if (!item) return;
+
+                item.isDragging = true;
+                el.classList.add("dragging");
+                document.body.classList.add('is-dragging');
+                
+                const pos = getPointerPos(e);
+                startX = pos.x;
+                startY = pos.y;
+                initX = el.offsetLeft;
+                initY = el.offsetTop;
+                item.originalX = initX; item.originalY = initY;
+
+                if (e.type === 'touchstart') {
+                    document.addEventListener('touchmove', dragMove, {passive: false});
+                    document.addEventListener('touchend', dragEnd);
+                } else {
+                    document.addEventListener('mousemove', dragMove);
+                    document.addEventListener('mouseup', dragEnd);
+                }
+            };
+
+            const dragMove = (e) => {
+                const item = activeInstruments.find(i => i.el === el);
+                if (!item || !item.isDragging) return;
+                e.preventDefault(); 
+
+                const pos = getPointerPos(e);
+                const dx = pos.x - startX;
+                const dy = pos.y - startY;
+
+                el.style.left = (initX + dx) + 'px';
+                el.style.top = (initY + dy) + 'px';
+                item.x = initX + dx;
+                item.y = initY + dy;
+            };
+
+            const dragEnd = (e) => {
+                const item = activeInstruments.find(i => i.el === el);
+                if (item) {
+                    item.isDragging = false;
+                    checkScoring(el, item);
+                }
+                el.classList.remove("dragging");
+                document.body.classList.remove('is-dragging');
+                
+                document.removeEventListener('mousemove', dragMove);
+                document.removeEventListener('mouseup', dragEnd);
+                document.removeEventListener('touchmove', dragMove);
+                document.removeEventListener('touchend', dragEnd);
+            };
+
+            el.addEventListener('mousedown', dragStart);
+            el.addEventListener('touchstart', dragStart, {passive: false});
+        }
+
+        // 每次放開時立刻判斷：正確就放進籃子並加分，錯誤就扣分並回到原位置。
+        function checkScoring(el, item) {
+            if (!isPlaying) return;
+            const card = el.getBoundingClientRect();
+            const x = card.left + card.width / 2;
+            const y = card.top + card.height / 2;
+            const baskets = document.querySelectorAll('.basket');
+            let target = null;
+            for (const basket of baskets) {
+                const rect = basket.getBoundingClientRect();
+                if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                    target = basket; break;
+                }
+            }
+            if (!target) return; // 未放進任何籃子，不計分
+            if (el.dataset.type === target.dataset.type) {
+                const points = speedSettings[currentSpeed].points;
+                score += points;
+                correctCount++;
+                const chip = document.createElement('span');
+                chip.className = 'basket-chip';
+                chip.textContent = el.dataset.name;
+                document.getElementById('items-' + target.dataset.type).appendChild(chip);
+                el.remove();
+                const index = activeInstruments.indexOf(item);
+                if (index >= 0) activeInstruments.splice(index, 1);
+                playSound('correct');
+                showFloatText(x, Math.max(80, target.getBoundingClientRect().top - 45), '+' + points, '#008f55');
+            } else {
+                score -= 100;
+                wrongCount++;
+                playSound('wrong');
+                showFloatText(x, Math.max(80, target.getBoundingClientRect().top - 45), '−100', '#e63946');
+                // 卡片退回原位，不會卡在籃子下面，學生可再次分類
+                item.x = item.originalX; item.y = Math.max(0, item.originalY);
+                el.style.left = item.x + 'px';
+                el.style.top = item.y + 'px';
+            }
+            updateUI();
+        }
+
+        function showFloatText(x, y, text, color) {
+            const node = document.createElement('div');
+            node.className = 'score-float';
+            node.textContent = text;
+            node.style.left = x + 'px';
+            node.style.top = y + 'px';
+            node.style.color = color;
+            document.body.appendChild(node);
+            setTimeout(() => node.remove(), 850);
+        }
+
+        function endGame() {
+            isPlaying = false;
+            clearInterval(timerInterval);
+            clearTimeout(spawnTimeout);
+            cancelAnimationFrame(animationFrame);
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('final-identity').textContent=sessionClass+'｜'+sessionTeam;
+            const record={date:new Date().toLocaleString('zh-TW',{hour12:false}),className:sessionClass,teamName:sessionTeam,score,correct:correctCount,wrong:wrongCount,speed:currentSpeed,duration:gameDuration};
+            const saved=saveRecords([...getRecords(),record]);
+            document.querySelector('#game-over-screen div[style*="font-size:.85rem"]').textContent=saved?'此局成績已保存在目前瀏覽器':'瀏覽器無法永久儲存；請立即匯出 CSV 備份';
+            document.getElementById("final-stats").textContent = `答對 ${correctCount} 題　｜　答錯 ${wrongCount} 次`;
+            document.getElementById('game-over-screen').style.display = 'flex';
+            document.getElementById('game-area').innerHTML = '';
+        }
+
+    </script>
+</body>
+</html>
