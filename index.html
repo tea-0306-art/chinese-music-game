@@ -721,6 +721,7 @@ header h1{font-family:var(--title-font);color:#655347;text-shadow:none}
             <button class="btn-speed" onclick="setSpeed(5, this)">最快<br><span style="font-size:0.7em">+220</span></button>
         </div>
         <div style="font-size:.82rem;color:#7f5871;margin-top:8px">💡 需要討論時，可隨時按「暫停思考」，時間與樂器都會停住。</div>
+        <p style="font-size:.85rem;line-height:1.6;color:#675f55;margin:9px 0">計分：答對基本分 180～220 分，加上反應速度獎勵 0～120 分；越快分類分數越高。答錯扣 100 分，暫停思考不計時。</p>
         <button class="action-btn" onclick="startGame()">開始遊戲！</button>
         <button class="btn-neutral" onclick="showLeaderboard()">查看班級成績紀錄</button>
     </div>
@@ -865,6 +866,7 @@ document.addEventListener('DOMContentLoaded',renderInstruments);
         let score = 0;
         let correctCount = 0, wrongCount = 0, spawnTimeout;
         let isPaused=false, wrongAttempts=[], missedCards=[];
+        let activePlayMilliseconds = 0; // 僅計算實際遊戲進行時間，暫停不計入
         const categoryNames={wind:'吹管',plucked:'彈撥',bowed:'拉弦',percussion:'打擊'};
         let gameDuration = 60;
         let remainingTime = 0;
@@ -982,6 +984,7 @@ document.addEventListener('DOMContentLoaded',renderInstruments);
             document.getElementById('class-display').textContent=c+'｜'+t;
             document.getElementById('controls').style.display = 'none';
             score = 0;
+            activePlayMilliseconds = 0;
             remainingTime = gameDuration;
             activeInstruments = [];
             correctCount = 0; wrongCount = 0; wrongAttempts=[]; missedCards=[];
@@ -1047,7 +1050,8 @@ document.addEventListener('DOMContentLoaded',renderInstruments);
                 y: -92,
                 x: startX,
                 speed: (speedSettings[currentSpeed].dropSpeed + Math.random()*0.5) * Math.max(0.55, Math.min(1, document.getElementById('game-area').offsetHeight / 430)),
-                isDragging: false
+                isDragging: false,
+                spawnedAt: activePlayMilliseconds
             });
 
             spawnTimeout = setTimeout(spawnInstrument, speedSettings[currentSpeed].spawnRate);
@@ -1057,6 +1061,7 @@ document.addEventListener('DOMContentLoaded',renderInstruments);
             if (!isPlaying || isPaused) return;
 
             const delta=Math.min(40,performance.now()-lastTick);lastTick=performance.now();
+            activePlayMilliseconds += delta;
             const limitY = document.getElementById("game-area").offsetHeight + 10; 
 
             [...activeInstruments].forEach((item) => {
@@ -1159,7 +1164,11 @@ document.addEventListener('DOMContentLoaded',renderInstruments);
             }
             if (!target) return; // 未放進任何籃子，不計分
             if (el.dataset.type === target.dataset.type) {
-                const points = speedSettings[currentSpeed].points;
+                const basePoints = speedSettings[currentSpeed].points;
+                const reactionSeconds = Math.max(0, (activePlayMilliseconds - item.spawnedAt) / 1000);
+                // 12 秒內每快 1 秒多 10 分，最快可得 120 分；逾 12 秒不加速度分。
+                const speedBonus = Math.max(0, 120 - Math.floor(reactionSeconds) * 10);
+                const points = basePoints + speedBonus;
                 score += points;
                 correctCount++;
                 const chip = document.createElement('span');
@@ -1170,7 +1179,7 @@ document.addEventListener('DOMContentLoaded',renderInstruments);
                 const index = activeInstruments.indexOf(item);
                 if (index >= 0) activeInstruments.splice(index, 1);
                 playSound('correct');
-                showFloatText(x, Math.max(80, target.getBoundingClientRect().top - 45), '+' + points, '#008f55');
+                showFloatText(x, Math.max(80, target.getBoundingClientRect().top - 45), '+' + points + (speedBonus ? '（快答+' + speedBonus + '）' : ''), '#008f55');
             } else {
                 score -= 100;
                 wrongCount++;
