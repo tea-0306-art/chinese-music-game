@@ -6,7 +6,7 @@
     <title>國樂樂器演奏法遊戲</title>
     <style>
         /* --- 1. 基礎設定 --- */
-        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Noto+Sans+TC:wght@500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Iansui&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 
         body {
             font-family: 'Noto Sans TC', sans-serif;
@@ -211,19 +211,468 @@
         .btn-neutral{background:#778ba3}.btn-danger{background:#c95666}
         #class-display{font-size:.9rem;background:#fff8;border-radius:10px;padding:6px;color:#6b3650;font-weight:bold}
         @media(max-width:600px){.identity-row{flex-direction:column}.modal-screen{padding:14px}.btn-speed{padding:8px 7px;margin:3px;font-size:.84rem}header{flex-wrap:wrap;gap:4px}}
-    </style>
+
+/* 筆電版：縮小籃子，讓落下來的樂器有更長的移動空間 */
+#baskets-container { flex: 0 0 clamp(112px, 17dvh, 148px); min-height:0; }
+.basket {padding:8px 4px 5px; gap:4px;}
+.basket-title {font-size:clamp(1.2rem,2.5vw,1.8rem);}
+.basket-title small {margin-top:3px; font-size:.62rem;}
+.basket-chip {padding:2px 5px;font-size:clamp(.63rem,1.2vw,.76rem);}
+#scoring-line::after {top:-21px;font-size:.78rem;}
+header {padding:5px 12px;min-height:43px;}
+h1 {font-size:1.2rem;}
+.score-box,.time-box{padding:4px 8px;font-size:.94rem;}
+.modal-screen {max-height:82dvh; padding:15px 20px;}
+.modal-screen h2 {font-size:1.35rem;margin-bottom:8px;}
+#controls .btn-speed{padding:8px 10px; font-size:.86rem; margin:3px;}
+#controls .btn-time{padding:8px 10px; margin:3px;}
+#controls .action-btn{margin-top:8px; padding:9px 18px;}
+@media (max-height:720px){
+  #baskets-container{flex-basis:110px;}
+  .instrument{width:74px;height:88px;}
+  .instrument img{width:35px;height:35px;}
+  .modal-screen{max-height:88dvh;}
+}
+
+/* 教學操作列與結算檢討 */
+#teacher-tools {position:absolute;top:54px;right:12px;z-index:110;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;pointer-events:auto}
+#teacher-tools button {margin:0;padding:7px 11px;border-radius:10px;background:#fff;color:#65435e;border:2px solid #f3a8b5;font-size:.88rem;box-shadow:0 3px 7px #0002}
+#pause-banner {display:none;position:absolute;inset:0;background:#fff9;z-index:105;align-items:center;justify-content:center;font-size:2rem;font-weight:900;color:#a44372;pointer-events:none}
+#game-over-screen{overflow-y:auto;padding:20px 10px;box-sizing:border-box;text-align:center;justify-content:flex-start;gap:8px}
+#game-over-screen h2{margin:4px}
+#final-score{font-size:2.6rem;margin:0}
+#review-panel{background:white;color:#3f4c60;border-radius:16px;padding:14px;width:min(720px,94%);box-sizing:border-box;text-align:left;max-height:42vh;overflow-y:auto}
+#review-panel h3{margin:0 0 8px;color:#a14d69}
+#review-panel li{padding:5px 0;border-bottom:1px solid #eceef4}
+#game-over-screen .action-btn{width:auto;margin:3px}
+@media(max-height:720px){#teacher-tools{top:46px}#teacher-tools button{padding:5px 8px;font-size:.77rem}#review-panel{max-height:32vh}}
+
+
+/* 教師導覽首頁：獨立於遊戲畫面，適用筆電和投影 */
+#learn-home{position:fixed;inset:0;z-index:4500;overflow-y:auto;background:#fffaf1;color:#314258;padding:0 18px 50px;box-sizing:border-box;font-family:'Noto Sans TC',sans-serif}
+#learn-home *{box-sizing:border-box}
+.learn-wrap{max-width:1160px;margin:auto}
+.learn-hero{background:linear-gradient(115deg,#ffd0d9,#fff0cb 55%,#d5f3e9);border-radius:0 0 32px 32px;padding:28px 25px 24px;text-align:center}
+.learn-hero h1{font-size:clamp(1.7rem,4vw,3rem);color:#904a67;text-shadow:none;margin-bottom:10px}
+.learn-hero p{font-size:1.08rem;margin:7px 0;color:#624b5d}
+.learn-actions{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin:16px 0}
+.learn-btn{background:#735ca7;color:white;border:0;border-radius:14px;padding:12px 18px;font-size:1rem;font-weight:800;cursor:pointer}
+.learn-btn.primary{background:#e35d87}.learn-btn.secondary{background:#438d8b}
+.learn-note{max-width:900px;margin:14px auto;padding:12px 18px;border-radius:14px;background:white;color:#65718a;font-size:.92rem}
+.learn-head{margin:26px 0 12px;display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.learn-head h2{margin:0;font-size:1.5rem}
+#learn-search{border:2px solid #ddd5e6;border-radius:12px;padding:10px 13px;font-size:1rem;width:min(100%,300px)}
+.learn-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 18px}
+.learn-tab{color:#41506c;background:#e8ecf3;border:0;border-radius:100px;padding:9px 16px;font-size:.96rem;font-weight:800;cursor:pointer}
+.learn-tab.active{background:#755ba5;color:white}
+.learn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:15px}
+.learn-card{background:white;border:2px solid #f0e5e6;border-radius:20px;overflow:hidden;box-shadow:0 4px 14px #352d3710}
+.learn-photo{display:none;width:90px;height:90px;flex:0 0 90px;background:#f7f9fb;border-radius:12px;overflow:hidden;align-items:center;justify-content:center}.learn-photo.has-photo{display:flex}
+.learn-photo img{width:100%;height:100%;object-fit:contain;padding:5px;display:block}
+.learn-card-top{display:flex;align-items:flex-start;gap:12px}.learn-card-top .learn-desc{flex:1}
+.learn-card-body{padding:14px}
+.learn-card h3{margin:0 0 6px;font-size:1.25rem}.learn-chip{font-size:.78rem;border-radius:12px;padding:3px 8px;background:#eff0fc;color:#605583}
+.learn-desc{min-height:59px;font-size:.92rem;line-height:1.55;margin:10px 0;color:#576276}
+.learn-links{display:flex;gap:6px;flex-wrap:wrap}
+.learn-links a{color:#7554a2;text-decoration:none;border:1px solid #e0d6ed;background:#fbf9fe;border-radius:10px;padding:7px 10px;font-size:.85rem;font-weight:800}
+.learn-links a.video{background:#fff1f1;border-color:#f7d4db;color:#ba4668}
+.learn-footer{position:sticky;bottom:0;background:#fff9eced;backdrop-filter:blur(8px);padding:10px 0;margin-top:20px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+@media(max-width:700px){.learn-hero{padding:16px 10px}.learn-photo{width:66px;height:66px;flex-basis:66px}.learn-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.learn-card-body{padding:9px}.learn-desc{font-size:.8rem;min-height:90px}.learn-links a{font-size:.76rem;padding:6px 7px}}
+
+    
+
+        /* ===== 芫荽美編版：整體色系與首頁重設 ===== */
+        :root{
+            --paper:#f6f1e7;
+            --paper-2:#fbf8f1;
+            --card:#fffdf9;
+            --ink:#4e4a43;
+            --muted:#7b776d;
+            --line:#ddd2c2;
+            --accent:#76856d;
+            --accent-2:#8f6f62;
+            --accent-3:#7a8da0;
+            --sage:#dbe4d8;
+            --sand:#eadfce;
+            --mist:#dde5ef;
+            --clay:#e8ddd4;
+            --soft-shadow:0 8px 24px rgba(84,71,51,.08);
+            --title-font:"Iansui TC","Iansui","芫荽","BiauKaiTC-Regular","Noto Serif TC",serif;
+            --ui-font:"Noto Sans TC",system-ui,sans-serif;
+        }
+        html,body{background:var(--paper);color:var(--ink);font-family:var(--ui-font)}
+        body{
+            background-image:linear-gradient(rgba(190,177,154,.14) 1px, transparent 1px),linear-gradient(90deg, rgba(190,177,154,.14) 1px, transparent 1px);
+            background-size:26px 26px;
+        }
+        header{
+            background:rgba(246,241,231,.92);
+            border-bottom:1px solid var(--line);
+            box-shadow:0 2px 10px rgba(80,66,49,.06);
+            backdrop-filter:blur(6px);
+        }
+        h1{font-family:var(--title-font);color:#5f6454;text-shadow:none;letter-spacing:.03em}
+        .status-board{color:var(--ink)}
+        .score-box,.time-box,#class-display{
+            background:rgba(255,253,249,.92);
+            border:1px solid var(--line);
+            color:var(--ink);
+            box-shadow:0 2px 7px rgba(80,66,49,.06);
+        }
+        #class-display{color:#6c6157}
+        .basket{color:var(--ink);text-shadow:none;border-right:1px solid rgba(255,255,255,.8)}
+        #basket-wind{background:var(--sage)}
+        #basket-plucked{background:var(--sand)}
+        #basket-bowed{background:var(--mist)}
+        #basket-percussion{background:var(--clay)}
+        #scoring-line{background:#a26d57;box-shadow:none;height:6px}
+        #scoring-line::after{color:#8d5c4a;font-weight:700;letter-spacing:.03em}
+        .basket-chip{background:#fffdfa;border:1px solid rgba(120,107,90,.15);color:#5d574f;box-shadow:0 2px 6px rgba(80,66,49,.08)}
+        .instrument{background:#fffdfa;border:1px solid #cfc2b1;border-radius:16px;box-shadow:0 6px 16px rgba(78,65,48,.12)}
+        .instrument span{color:#4f4a43}
+        .instrument:active{border-color:#a98a76}
+        .modal-screen{
+            background:rgba(255,253,249,.98);
+            border:1px solid var(--line);
+            box-shadow:0 20px 50px rgba(72,61,48,.18);
+            color:var(--ink);
+        }
+        .modal-screen h2{font-family:var(--title-font);color:#6a6f59}
+        button{font-family:var(--ui-font)}
+        .btn-time,.btn-speed,.btn-neutral,.btn-danger,.action-btn{
+            border:1px solid transparent;
+            box-shadow:0 3px 10px rgba(80,66,49,.08);
+        }
+        .btn-time{background:#dfe8ef;color:#44505d}
+        .btn-time.active{background:#7a8da0;color:#fff;border-color:#7a8da0;box-shadow:0 0 0 3px rgba(122,141,160,.14)}
+        .btn-speed{background:#eadfd5;color:#6b564b}
+        .btn-speed.active{background:#8f6f62;color:#fff;border-color:#8f6f62;box-shadow:0 0 0 3px rgba(143,111,98,.14)}
+        .action-btn{background:#dfe8dc;color:#50614c}
+        .btn-neutral{background:#7d8da0;color:#fff}
+        .btn-danger{background:#b7776f;color:#fff}
+        #teacher-tools button{background:#fffdfa;color:#675d52;border:1px solid var(--line);box-shadow:0 4px 12px rgba(80,66,49,.08)}
+        #pause-banner{background:rgba(249,245,238,.88);color:#7d6b5c;backdrop-filter:blur(3px);font-family:var(--title-font)}
+        #review-panel{background:#fffdfa;border:1px solid var(--line);box-shadow:var(--soft-shadow)}
+        #review-panel h3,#leaderboard-screen h2{font-family:var(--title-font);color:#69755f}
+        #leaderboard-body th{background:#f1ece4}
+
+        /* 樂器圖鑑首頁重新美編 */
+        #learn-home{
+            background:var(--paper-2);
+            color:var(--ink);
+            padding:0 20px 56px;
+            font-family:var(--ui-font);
+        }
+        .learn-wrap{max-width:1120px}
+        .learn-hero{
+            margin-top:18px;
+            background:linear-gradient(180deg, #f6efe3 0%, #f9f5ec 100%);
+            border:1px solid var(--line);
+            border-radius:28px;
+            padding:34px 28px 28px;
+            text-align:left;
+            box-shadow:var(--soft-shadow);
+            position:relative;
+            overflow:hidden;
+        }
+        .learn-hero::after{
+            content:"";
+            position:absolute;
+            right:-40px; top:-28px;
+            width:180px; height:180px;
+            background:radial-gradient(circle, rgba(219,228,216,.9) 0%, rgba(219,228,216,0) 70%);
+            pointer-events:none;
+        }
+        .learn-hero h1{
+            font-family:var(--title-font);
+            font-size:clamp(1.95rem,4vw,3rem);
+            color:#5f6454;
+            margin:0 0 12px;
+            line-height:1.25;
+        }
+        .learn-hero p{
+            font-size:1.04rem;
+            margin:0;
+            color:#6d665d;
+            line-height:1.8;
+            max-width:760px;
+        }
+        .learn-actions{justify-content:flex-start;gap:12px;margin-top:20px}
+        .learn-btn{
+            background:#7a8b73;
+            color:#fff;
+            border:1px solid rgba(0,0,0,.03);
+            border-radius:999px;
+            padding:11px 18px;
+            font-size:.97rem;
+            font-weight:700;
+            box-shadow:0 4px 12px rgba(83,78,68,.08);
+        }
+        .learn-btn.primary{background:#7a8b73}
+        .learn-btn.secondary{background:#7a8da0}
+        .learn-note{
+            max-width:none;
+            margin:18px 0 10px;
+            padding:16px 18px;
+            border-radius:18px;
+            background:#f3eee6;
+            color:#736c63;
+            border:1px solid var(--line);
+            font-size:.93rem;
+            line-height:1.75;
+        }
+        .learn-head{margin:28px 0 14px}
+        .learn-head h2{
+            margin:0;
+            font-family:var(--title-font);
+            font-size:1.7rem;
+            color:#666e5d;
+        }
+        #learn-count{font-size:.88em;color:#8c7f72}
+        #learn-search{
+            border:1px solid var(--line);
+            border-radius:14px;
+            padding:10px 14px;
+            font-size:1rem;
+            width:min(100%,300px);
+            background:#fffdfa;
+            color:var(--ink);
+        }
+        #learn-search::placeholder{color:#a0968a}
+        .learn-tabs{gap:10px;margin:12px 0 20px}
+        .learn-tab{
+            color:#6a6258;
+            background:#f1ece4;
+            border:1px solid var(--line);
+            border-radius:999px;
+            padding:9px 16px;
+            font-size:.94rem;
+            font-weight:700;
+        }
+        .learn-tab.active{background:#6f8068;color:#fff;border-color:#6f8068}
+        .learn-grid{grid-template-columns:repeat(auto-fill,minmax(245px,1fr));gap:18px}
+        .learn-card{
+            background:var(--card);
+            border:1px solid #e6dccd;
+            border-radius:22px;
+            overflow:hidden;
+            box-shadow:0 8px 22px rgba(84,71,51,.07);
+        }
+        .learn-card-body{padding:16px}
+        .learn-photo{width:84px;height:84px;flex:0 0 84px;background:#f4efe7;border-radius:16px;border:1px solid #ece3d7}
+        .learn-photo img{padding:8px}
+        .learn-card h3{
+            margin:0 0 7px;
+            font-family:var(--title-font);
+            font-size:1.32rem;
+            color:#5e5a52;
+        }
+        .learn-chip{
+            font-size:.76rem;
+            border-radius:999px;
+            padding:4px 9px;
+            background:#efe8dc;
+            color:#766b5e;
+            border:1px solid #e6dccd;
+        }
+        .learn-desc{
+            min-height:62px;
+            font-size:.92rem;
+            line-height:1.7;
+            margin:12px 0;
+            color:#6f695f;
+        }
+        .learn-links{gap:8px}
+        .learn-links a{
+            color:#5d6d57;
+            text-decoration:none;
+            border:1px solid #d8cfbe;
+            background:#faf6ef;
+            border-radius:999px;
+            padding:7px 11px;
+            font-size:.84rem;
+            font-weight:700;
+        }
+        .learn-links a.video{background:#eef3f7;border-color:#d8e0e8;color:#5b7085}
+        .learn-footer{
+            position:sticky;
+            bottom:0;
+            background:rgba(251,248,241,.92);
+            backdrop-filter:blur(8px);
+            padding:12px 0 4px;
+            margin-top:22px;
+            display:flex;
+            justify-content:center;
+            gap:10px;
+            flex-wrap:wrap;
+            border-top:1px solid rgba(221,210,194,.7);
+        }
+        @media(max-width:700px){
+            #learn-home{padding:0 12px 42px}
+            .learn-hero{padding:24px 16px 18px;border-radius:22px;text-align:left}
+            .learn-actions{justify-content:flex-start}
+            .learn-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+            .learn-card-body{padding:11px}
+            .learn-photo{width:68px;height:68px;flex-basis:68px}
+            .learn-card h3{font-size:1.08rem}
+            .learn-desc{font-size:.81rem;min-height:86px;line-height:1.6}
+            .learn-links a{font-size:.75rem;padding:6px 8px}
+        }
+
+    
+/* ===== 童書風主題：保留遊戲功能、以芫荽體呈現 ===== */
+:root{
+  --paper:#fff8ed;--paper-2:#fffbf5;--card:#fffefb;--ink:#51493f;--muted:#82756c;
+  --line:#eadccc;--accent:#6a906f;--accent-2:#d48373;--accent-3:#7798ad;
+  --sage:#d9ecdc;--sand:#ffe6bf;--mist:#dcebf7;--clay:#f6dcd2;
+  --title-font:"Iansui TC","Iansui","芫荽", "Noto Sans TC",sans-serif;
+  --ui-font:"Iansui TC","Iansui","芫荽", "Noto Sans TC",sans-serif;
+  --soft-shadow:0 5px 0 #ede0d0, 0 12px 24px rgba(104,77,49,.07);
+}
+body{background:#fff8ed;background-image:radial-gradient(#eadbc7 1.1px,transparent 1.1px);background-size:22px 22px;font-family:var(--ui-font)}
+#learn-home{background:#fffaf1;font-family:var(--ui-font);padding-bottom:70px}
+.learn-wrap{max-width:1140px}
+.learn-hero{background:#fff5df;border:2px solid #e8d6b9;border-radius:28px 28px 34px 34px;padding:39px 34px 30px;box-shadow:0 7px 0 #e8d6b9;position:relative;overflow:hidden}
+.learn-hero::before{content:'♪';font-family:var(--title-font);position:absolute;right:68px;top:20px;font-size:76px;color:#ddbba2;opacity:.7;transform:rotate(-15deg);pointer-events:none}
+.learn-hero::after{content:'♫';position:absolute;right:17px;bottom:9px;width:auto;height:auto;background:none;font-size:59px;color:#b3c9ae;opacity:.8;pointer-events:none;transform:rotate(15deg)}
+.learn-hero h1{font-family:var(--title-font);font-size:clamp(2.1rem,4.7vw,3.8rem);color:#69574d;line-height:1.32;letter-spacing:.04em;position:relative;z-index:1}
+.learn-hero p{font-family:var(--ui-font);font-size:1.18rem;color:#75685b;max-width:680px;position:relative;z-index:1}
+.learn-actions{position:relative;z-index:1}
+.learn-btn{font-family:var(--title-font);font-weight:700;background:#93ae8e;color:#293b2d;border:2px solid #6e9271;border-bottom-width:5px;box-shadow:none;border-radius:17px;padding:10px 20px;transition:transform .15s,border-bottom-width .15s}
+.learn-btn:hover{transform:translateY(-2px)}
+.learn-btn:active{transform:translateY(2px);border-bottom-width:2px}
+.learn-btn.primary{background:#d9eacb;border-color:#86a982;color:#426047}
+.learn-btn.secondary{background:#d8eaf5;border-color:#83abc2;color:#446d84}
+.learn-note{border:1.5px dashed #ddbc9d;background:#fff4e8;border-radius:16px;color:#806e5b;box-shadow:none}
+.learn-head h2{font-family:var(--title-font);font-size:2rem;color:#6b6552}
+#learn-count{background:#fce8c9;border-radius:18px;padding:3px 12px;font-size:.65em;color:#8d684d;white-space:nowrap}
+#learn-search{font-family:var(--ui-font);background:#fff;border:2px solid #e9d4be;border-radius:15px}
+.learn-tab{font-family:var(--title-font);background:#fff9ed;color:#705e50;border:2px solid #ead9c3;border-bottom-width:4px;border-radius:16px;box-shadow:none}
+.learn-tab.active{background:#d5e8d3;border-color:#81a17b;color:#415e45}
+.learn-grid{gap:17px}
+.learn-card{background:#fffefa;border:2px solid #eadfcd;border-radius:22px 22px 19px 19px;box-shadow:0 6px 0 #f0e6d9;transition:transform .18s ease,box-shadow .18s ease}
+.learn-card:hover{transform:translateY(-3px);box-shadow:0 9px 0 #eee1d2}
+.learn-card:nth-child(4n+1){border-top:7px solid #a4c8a4}
+.learn-card:nth-child(4n+2){border-top:7px solid #ecc695}
+.learn-card:nth-child(4n+3){border-top:7px solid #a7c7db}
+.learn-card:nth-child(4n){border-top:7px solid #e6b4aa}
+.learn-card-body{padding:17px}
+.learn-card h3{font-family:var(--title-font);font-size:1.48rem;color:#534c40}
+.learn-photo{background:#fbf5e9;border:1.5px solid #e9d8c4;border-radius:17px;width:82px;height:82px;flex-basis:82px}
+.learn-chip{background:#f5eee3;border:1px solid #e7daca;color:#8a7058;font-family:var(--ui-font);font-weight:700}
+.learn-desc{color:#776c61;font-family:var(--ui-font);font-size:1rem;line-height:1.65}
+.learn-links a{font-family:var(--ui-font);color:#52775c;background:#f0f8ed;border:1.5px solid #b8d2b5;border-radius:13px;font-weight:700}
+.learn-links a.video{color:#5b7f99;background:#eef7fc;border:1.5px solid #bad1e1}
+.learn-footer{background:rgba(255,250,241,.95);border-top:1.5px dashed #e5cfb5}
+header{background:#fff2df;border-bottom:3px solid #e8d0b9}
+header h1{font-family:var(--title-font);color:#655347;text-shadow:none}
+#basket-wind{background:#d9eacc}#basket-plucked{background:#ffe5b7}#basket-bowed{background:#d4eafa}#basket-percussion{background:#f8d9d2}
+#scoring-line{background:#b77b65;height:5px}
+#scoring-line::after{color:#956451}
+.basket-title{font-family:var(--title-font);color:#554e44}
+.instrument{border:2px solid #c9b097;border-radius:16px;background:#fffef9;box-shadow:0 5px 0 #d8c6b2}
+.instrument span{font-family:var(--ui-font);font-size:1rem}
+.modal-screen{border:3px solid #e7d1b8;border-radius:26px;background:#fffdf8;box-shadow:0 9px 0 #e4d3c1,0 20px 45px #75604425}
+.modal-screen h2{font-family:var(--title-font);color:#765f50}
+.btn-time{background:#d9eaf5;color:#476b80;border:2px solid #a8c8dc}
+.btn-time.active{background:#8eb7ce;border:2px solid #668da5;color:#fff}
+.btn-speed{background:#fff0d7;color:#8b674d;border:2px solid #ebcea6}
+.btn-speed.active{background:#d7a77b;color:#fff;border:2px solid #b9845e}
+.action-btn{background:#d7e9d3;color:#416a4b;border:2px solid #9abc9a;border-bottom-width:4px}
+#teacher-tools button{font-family:var(--ui-font);border-radius:12px;background:#fff9ef;border:2px solid #e4cbb4;color:#675344}
+#review-panel{border:2px solid #e5d5c1;background:#fffaf1}
+#review-panel h3{font-family:var(--title-font);color:#69866a}
+@media(max-width:700px){.learn-hero{padding:25px 16px}.learn-hero::before{right:12px;top:9px;font-size:44px}.learn-hero::after{font-size:33px}.learn-hero p{font-size:1rem}.learn-card h3{font-size:1.17rem}.learn-grid{gap:9px}.learn-card-body{padding:11px}.learn-desc{font-size:.84rem}.learn-note{font-size:.85rem}}
+
+
+/* 純文字圖鑑：不留照片、搜尋工具或空白占位 */
+.learn-grid{grid-template-columns:repeat(auto-fill,minmax(255px,1fr));align-items:stretch;gap:16px}
+.learn-card{display:flex;min-height:190px;}
+.learn-card-body{display:flex;flex-direction:column;justify-content:space-between;gap:18px;width:100%;min-height:0;padding:21px 21px 18px}
+.learn-card-copy{display:block;width:100%}
+.learn-card h3{margin:0 0 13px;line-height:1.4}
+.learn-card .learn-desc{margin:0;min-height:0;line-height:1.8;color:#655d50}
+.learn-links{margin-top:auto;display:flex;flex-wrap:wrap;gap:9px}
+.learn-links a{display:inline-flex;align-items:center;white-space:nowrap}
+@media(max-width:750px){.learn-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.learn-card-body{padding:15px;min-height:180px}.learn-card .learn-desc{font-size:.85rem;min-height:0}}
+@media(max-width:480px){.learn-grid{grid-template-columns:1fr}.learn-card-body{min-height:0}.learn-card{min-height:165px}}
+
+
+/* 正式教學版：純文字圖鑑及純文字掉落卡，不載入任何樂器照片 */
+.hero-eyebrow{font-size:.86rem;letter-spacing:.16em;font-weight:700;color:#8b715d;margin-bottom:9px}
+.learn-hero{background:#fff7e9}
+.learn-hero::before{content:'♪';right:64px;color:#d7b58e;font-size:60px}
+.learn-hero::after{content:'♫';color:#b0c8ad;font-size:47px}
+.learn-card{min-height:185px}
+.learn-card-body{min-height:0;gap:15px;justify-content:flex-start}
+.learn-card h3{font-size:clamp(1.35rem,2.4vw,1.55rem)}
+.learn-desc{color:#665d54}
+.learn-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto}
+.learn-links a{min-height:35px;display:inline-flex;align-items:center;justify-content:center;transition:background-color .16s ease}
+.learn-links a:hover,.learn-tab:hover{filter:brightness(.96)}
+.learn-note{line-height:1.9}
+#learn-grid{padding-bottom:6px}
+.instrument{width:112px;height:67px;border:2px solid #c5a88c;box-sizing:border-box;display:flex;align-items:center;justify-content:center;padding:6px 8px}
+.instrument span{font-size:clamp(1.02rem,1.7vw,1.26rem);line-height:1.35;font-weight:800;color:#584c3d;text-align:center;white-space:nowrap}
+#controls .action-btn{width:100%}
+@media (max-width:640px){
+ .instrument{width:95px;height:60px}
+ .instrument span{font-size:1rem}
+ .learn-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .learn-card{min-height:195px}
+ .learn-links a{font-size:.78rem}
+}
+@media (max-width:480px){
+ .learn-grid{grid-template-columns:1fr}
+ .learn-card{min-height:150px}
+ .learn-hero::before,.learn-hero::after{opacity:.32}
+}
+
+
+/* 教師筆電優先：首頁更緊湊，讓樂器卡片不必捲很久才看到 */
+.learn-hero{padding:23px 29px 20px}
+.learn-hero h1{font-size:clamp(2rem,3.4vw,3.05rem);margin-bottom:7px}
+.learn-hero p{font-size:1.04rem}
+.learn-actions{margin:15px 0 0}
+.learn-note{margin:16px 0 8px;padding:10px 15px}
+.learn-head{margin:19px 0 11px}
+.learn-tabs{margin:8px 0 15px}
+.learn-footer{position:static;backdrop-filter:none;border-top:1px dashed #e5cfb5;background:transparent;padding:18px 0 8px}
+@media(max-width:700px){.learn-hero{padding:23px 18px}.learn-hero h1{font-size:clamp(1.8rem,7vw,2.4rem)}}
+
+</style>
 </head>
 <body>
 
+
+<section id="learn-home" aria-label="國樂樂器教學首頁">
+ <div class="learn-wrap">
+  <div class="learn-hero"><div class="hero-eyebrow">音樂教室・互動學習</div><h1>國樂吹・彈・拉・打</h1>
+   <p>先認識樂器、聽聽它們的聲音，接著一起玩分類挑戰。</p>
+   <div class="learn-actions"><button class="learn-btn primary" onclick="enterCompetition()">開始分類挑戰</button><button class="learn-btn secondary" onclick="showLeaderboard()">查看班級排行榜</button><button class="learn-btn" onclick="toggleFullscreen()">全螢幕</button></div>
+  </div>
+  <div class="learn-note"><strong>給第一次使用的老師：</strong>先選「吹、彈、拉、打」認識樂器，再點卡片上的「找演奏示範」帶學生聽聲音，最後按「開始分類挑戰」。演奏與介紹連結會開啟新的分頁，需連網；影片連結會開啟 YouTube 搜尋結果，方便老師先選合適的示範。</div>
+  <div class="learn-head"><h2>樂器圖鑑 <span id="learn-count">42 種</span></h2><input id="learn-search" type="search" placeholder="搜尋樂器，例如：二胡" oninput="renderInstruments()" aria-label="搜尋樂器"/></div>
+  <div class="learn-tabs"><button class="learn-tab active" onclick="setLearnGroup('all',this)">全部 42</button><button class="learn-tab" onclick="setLearnGroup('wind',this)">吹管 11</button><button class="learn-tab" onclick="setLearnGroup('plucked',this)">彈撥 10</button><button class="learn-tab" onclick="setLearnGroup('bowed',this)">拉弦 9</button><button class="learn-tab" onclick="setLearnGroup('percussion',this)">打擊 12</button></div>
+  <div id="learn-grid" class="learn-grid"></div>
+  <div class="learn-footer"><button class="learn-btn primary" onclick="enterCompetition()">認識完了，開始遊戲</button><button class="learn-btn secondary" onclick="showLeaderboard()">查看班級成績</button></div>
+ </div>
+</section>
+
     <header>
-        <h1>🎪 國樂樂器分類</h1>
+        <h1>國樂樂器分類</h1>
         <div class="status-board">
             <div id="class-display">尚未選擇隊伍</div><div class="score-box">得分：<span id="score">0</span></div>
             <div class="time-box">時間: <span id="timer">00:00</span></div><div class="time-box">✅ <span id="correct-count">0</span>　❌ <span id="wrong-count">0</span></div>
         </div>
     </header>
 
-    <div id="game-area"></div>
+    <div id="game-area"><div id="pause-banner">⏸ 已暫停・一起想一想</div></div>
+    <div id="teacher-tools">
+      <button onclick="toggleFullscreen()" id="fullscreen-btn">⛶ 全螢幕</button>
+      <button onclick="togglePause()" id="pause-btn">⏸ 暫停思考</button>
+      <button onclick="returnHome()">⌂ 回首頁</button>
+    </div>
 
     <div id="baskets-container">
         <div id="scoring-line"></div> 
@@ -242,7 +691,7 @@
         </div>
     </div>
 
-    <div id="rules-screen" class="modal-screen">
+    <div id="rules-screen" class="modal-screen" style="display:none">
         <h2>📜 怎麼玩？</h2>
         <div style="text-align: left; line-height: 1.6; color: #555; padding: 0 10px;">
             1. 樂器從天而降。<br>
@@ -257,13 +706,13 @@
         <h2>⚙️ 班級競賽設定</h2>
         <div class="identity-row"><label>班級<input id="class-name" type="text" maxlength="25" placeholder="例如：501" autocomplete="off"></label><label>隊伍名稱<input id="team-name" type="text" maxlength="30" placeholder="例如：第一組" autocomplete="off"></label></div>
         <div style="font-size:.82rem;color:#667086">同一班每組玩完會自動存入本機成績紀錄。</div>
-        <p style="margin-bottom:5px; font-weight:bold; color:#666;">⏱️ 時間</p>
+        <p style="margin-bottom:5px; font-weight:bold; color:#666;">比賽時間</p>
         <div style="margin-bottom: 15px;">
             <button class="btn-time active" onclick="setTime(1, this)">1 分鐘</button>
             <button class="btn-time" onclick="setTime(2, this)">2 分鐘</button>
             <button class="btn-time" onclick="setTime(3, this)">3 分鐘</button>
         </div>
-        <p style="margin-bottom:5px; font-weight:bold; color:#666;">🚀 速度與分數</p>
+        <p style="margin-bottom:5px; font-weight:bold; color:#666;">掉落速度與答對分數</p>
         <div>
             <button class="btn-speed" onclick="setSpeed(1, this)">最慢<br><span style="font-size:0.7em">+180</span></button>
             <button class="btn-speed" onclick="setSpeed(2, this)">慢<br><span style="font-size:0.7em">+190</span></button>
@@ -271,14 +720,17 @@
             <button class="btn-speed" onclick="setSpeed(4, this)">快<br><span style="font-size:0.7em">+210</span></button>
             <button class="btn-speed" onclick="setSpeed(5, this)">最快<br><span style="font-size:0.7em">+220</span></button>
         </div>
+        <div style="font-size:.82rem;color:#7f5871;margin-top:8px">💡 需要討論時，可隨時按「暫停思考」，時間與樂器都會停住。</div>
         <button class="action-btn" onclick="startGame()">開始遊戲！</button>
-        <button class="btn-neutral" onclick="showLeaderboard()">🏆 查看班級成績紀錄</button>
+        <button class="btn-neutral" onclick="showLeaderboard()">查看班級成績紀錄</button>
     </div>
 
     <div id="game-over-screen">
         <h2>🎉 時間到！</h2>
         <div>本次得分</div>
         <div id="final-score">0</div><div id="final-identity"></div><div id="final-stats"></div><div style="font-size:.85rem;color:#d5ebdd">此局成績已記錄在目前瀏覽器</div>
+        <div id="review-panel"><h3>🔎 本組錯題檢討</h3><div id="review-summary"></div><ol id="review-list"></ol></div>
+        <div style="font-size:.88rem">🧑‍🏫 成績及錯題會留在這裡，老師按下一組才離開。</div>
         <button class="action-btn" style="background:#FF9AA2; width: auto; padding: 10px 40px;" onclick="resetGame()">下一組／再玩一次</button>
         <button class="btn-neutral" onclick="showLeaderboard()">🏆 查看排行榜</button>
     </div>
@@ -294,13 +746,79 @@
         <button class="action-btn" onclick="closeLeaderboard()">返回</button>
     </div>
     <script>
+
+const encyclopedia = [{"name": "嗩吶", "en": "Suona", "desc": "雙簧哨片配上喇叭口，聲音響亮，常出現在廟會與熱鬧的樂曲。", "type": "wind"}, {"name": "竹笛", "en": "Dizi", "desc": "橫著吹的竹製樂器，有笛膜，聲音清亮。", "type": "wind"}, {"name": "曲笛", "en": "Qudi Chinese flute", "desc": "較低沉圓潤的竹笛，適合演奏柔和旋律。", "type": "wind"}, {"name": "塤", "en": "Xun instrument", "desc": "陶土製的吹奏樂器，外形像小罐子，聲音古樸。", "type": "wind"}, {"name": "笙", "en": "Sheng instrument", "desc": "多根竹管加上簧片，能同時吹出和聲。", "type": "wind"}, {"name": "竽", "en": "Yu ancient Chinese instrument", "desc": "古代大型自由簧吹奏樂器，與笙有淵源。", "type": "wind"}, {"name": "排笙", "en": "Paisheng instrument", "desc": "現代笙的延伸型制，音管成排排列。", "type": "wind"}, {"name": "葫蘆絲", "en": "Hulusi", "desc": "葫蘆形的吹口配上竹管，音色柔美。", "type": "wind"}, {"name": "梆笛", "en": "Bangdi", "desc": "音域較高、聲音明亮的竹笛。", "type": "wind"}, {"name": "洞簫", "en": "Xiao Chinese flute", "desc": "直著吹的竹管樂器，音色悠長安靜。", "type": "wind"}, {"name": "管子", "en": "Guanzi instrument", "desc": "使用雙簧哨片的吹管樂器，聲音厚實。", "type": "wind"}, {"name": "琵琶", "en": "Pipa", "desc": "抱在胸前彈奏，右手可以快速輪指。", "type": "plucked"}, {"name": "柳琴", "en": "Liuqin", "desc": "外形像縮小的琵琶，音色明亮清脆。", "type": "plucked"}, {"name": "三弦", "en": "Sanxian", "desc": "有三條弦、長琴頸，常用撥子或手指彈奏。", "type": "plucked"}, {"name": "揚琴", "en": "Yangqin", "desc": "用小琴竹敲擊琴弦；在現代國樂團通常編入彈撥組。", "type": "plucked"}, {"name": "古箏", "en": "Guzheng", "desc": "長長的琴身有許多琴弦，常用義甲彈奏。", "type": "plucked"}, {"name": "小阮", "en": "Xiaoruan", "desc": "圓形琴身的阮咸家族中，體型較小的一種。", "type": "plucked"}, {"name": "中阮", "en": "Zhongruan", "desc": "圓形琴身、音色溫暖，是國樂團常見彈撥樂器。", "type": "plucked"}, {"name": "大阮", "en": "Daruan", "desc": "體型較大的阮，聲音比較低沉。", "type": "plucked"}, {"name": "月琴", "en": "Yueqin", "desc": "像月亮般的圓形琴身，傳統戲曲常見。", "type": "plucked"}, {"name": "古琴", "en": "Guqin", "desc": "歷史悠久的七弦琴，以手指撥彈琴弦。", "type": "plucked"}, {"name": "二胡", "en": "Erhu", "desc": "兩條弦，弓毛夾在兩弦之間，聲音像在唱歌。", "type": "bowed"}, {"name": "椰胡", "en": "Yehu", "desc": "琴筒常用椰殼製作，常見於部分傳統地方音樂。", "type": "bowed"}, {"name": "革胡", "en": "Gehu", "desc": "低音拉弦樂器，常見於部分現代國樂團編制。", "type": "bowed"}, {"name": "倍革胡", "en": "Diyingehu", "desc": "比革胡更低音的大型拉弦樂器。", "type": "bowed"}, {"name": "高胡", "en": "Gaohu", "desc": "比二胡音域高，音色明亮。", "type": "bowed"}, {"name": "馬頭琴", "en": "Morin khuur", "desc": "琴頭常有馬頭雕刻，與蒙古族音樂文化密切相關。", "type": "bowed"}, {"name": "中胡", "en": "Zhonghu", "desc": "音域介於二胡與低音拉弦樂器之間，聲音柔厚。", "type": "bowed"}, {"name": "板胡", "en": "Banhu", "desc": "以木板作琴筒面板，音色穿透力強。", "type": "bowed"}, {"name": "京胡", "en": "Jinghu", "desc": "京劇伴奏常見的小型拉弦樂器，聲音尖亮。", "type": "bowed"}, {"name": "拍板", "en": "Paiban", "desc": "用手拍擊木板來控制節奏。", "type": "percussion"}, {"name": "木魚", "en": "Muyu instrument", "desc": "敲擊木製共鳴體，發出清脆的「扣」聲。", "type": "percussion"}, {"name": "編鐘", "en": "Bianzhong", "desc": "一組高低不同的鐘，敲擊可發出不同音高。", "type": "percussion"}, {"name": "堂鼓", "en": "Tanggu", "desc": "以鼓槌敲擊鼓面，常用來營造氣勢。", "type": "percussion"}, {"name": "鑼", "en": "Gong Chinese instrument", "desc": "敲擊金屬圓盤，聲音可以很響亮。", "type": "percussion"}, {"name": "響盞", "en": "Xiangzhan Chinese percussion", "desc": "原始題庫名稱，所指樂器尚待核對；建議老師確認教材。", "type": "percussion"}, {"name": "柷", "en": "Zhu ancient percussion instrument", "desc": "古代木製敲擊樂器，常見於禮樂記載。", "type": "percussion"}, {"name": "排鼓", "en": "Paigu", "desc": "多面音高不同的鼓排在一起演奏。", "type": "percussion"}, {"name": "鈸", "en": "Cymbals Chinese", "desc": "兩片金屬圓盤碰擊，聲音明亮。", "type": "percussion"}, {"name": "雲鑼", "en": "Yunluo", "desc": "一組小鑼，能演奏不同音高。", "type": "percussion"}, {"name": "梆子", "en": "Bangzi percussion", "desc": "木製敲擊樂器，聲音乾脆。", "type": "percussion"}, {"name": "板鼓", "en": "Bangu", "desc": "戲曲伴奏常用的小鼓，鼓聲集中有力。", "type": "percussion"}];
+const typeTitles = {wind:'吹管',plucked:'彈撥',bowed:'拉弦',percussion:'打擊'};
+const typeEmoji = {wind:'🎐',plucked:'🪕',bowed:'🎻',percussion:'🥁'};
+let learnGroup = 'all';
+function setLearnGroup(group,button){learnGroup=group;document.querySelectorAll('.learn-tab').forEach(x=>x.classList.remove('active'));button.classList.add('active');renderInstruments()}
+function enterCompetition(){document.getElementById('learn-home').style.display='none';document.getElementById('rules-screen').style.display='none';document.getElementById('controls').style.display='block';}
+function renderInstruments(){
+ const q=document.getElementById('learn-search').value.trim().toLowerCase();
+ const data=encyclopedia.filter(x=>(learnGroup==='all'||x.type===learnGroup)&&(x.name.toLowerCase().includes(q)||x.en.toLowerCase().includes(q)));
+ document.getElementById('learn-count').textContent=data.length+' 種';
+ document.getElementById('learn-grid').innerHTML=data.map(x=>{
+  const name=safeText(x.name);
+  const query=encodeURIComponent(x.name+' '+x.en+' 國樂 樂器 演奏 示範 介紹');
+  const article=encodeURIComponent(x.name+' 樂器');
+  return `<article class="learn-card"><div class="learn-card-body"><div class="learn-card-copy"><h3>${name} <span class="learn-chip">${typeTitles[x.type]}</span></h3><p class="learn-desc">${safeText(x.desc)}</p></div><div class="learn-links"><a class="video" target="_blank" rel="noopener noreferrer" href="https://www.youtube.com/results?search_query=${query}">▶ 找演奏示範</a><a target="_blank" rel="noopener noreferrer" href="https://zh.wikipedia.org/w/index.php?search=${article}">樂器介紹</a></div></div></article>`;
+ }).join('');
+}
+document.addEventListener('DOMContentLoaded',renderInstruments);
+
         // --- 樂器資料庫 ---
         const instrumentsData = {
-            wind: ['嗩吶', '中國笛', '曲笛', '壎', '笙', '竽', '排笙', '葫蘆絲'],
-            plucked: ['琵琶', '柳琴', '三弦', '揚琴', '古箏', '阮', '中阮'],
-            bowed: ['二胡', '椰胡', '革胡', '倍革胡', '高胡', '馬頭琴'],
-            percussion: ['拍板', '木魚', '編鐘', '堂鼓', '鑼', '響盞', '柷']
-        };
+            "wind": [
+                        "嗩吶",
+                        "竹笛",
+                        "曲笛",
+                        "塤",
+                        "笙",
+                        "竽",
+                        "排笙",
+                        "葫蘆絲",
+                        "梆笛",
+                        "洞簫",
+                        "管子"
+            ],
+            "plucked": [
+                        "琵琶",
+                        "柳琴",
+                        "三弦",
+                        "揚琴",
+                        "古箏",
+                        "小阮",
+                        "中阮",
+                        "大阮",
+                        "月琴",
+                        "古琴"
+            ],
+            "bowed": [
+                        "二胡",
+                        "椰胡",
+                        "革胡",
+                        "倍革胡",
+                        "高胡",
+                        "馬頭琴",
+                        "中胡",
+                        "板胡",
+                        "京胡"
+            ],
+            "percussion": [
+                        "拍板",
+                        "木魚",
+                        "編鐘",
+                        "堂鼓",
+                        "鑼",
+                        "響盞",
+                        "柷",
+                        "排鼓",
+                        "鈸",
+                        "雲鑼",
+                        "梆子",
+                        "板鼓"
+            ]
+};
 
         // --- 全域變數 ---
         const STORAGE_KEY = 'guoyue_class_scores_v1';
@@ -310,7 +828,9 @@
         function saveRecords(records){fallbackRecords=records;try{localStorage.setItem(STORAGE_KEY,JSON.stringify(records));return true}catch(e){return false}}
         function safeText(s){return String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
         function showLeaderboard(){
-            previousPanel=document.getElementById('game-over-screen').style.display==='flex'?'game-over-screen':'controls';
+            const fromHome=document.getElementById('learn-home').style.display!=='none';
+            previousPanel=fromHome?'learn-home':(document.getElementById('game-over-screen').style.display==='flex'?'game-over-screen':'controls');
+            if(fromHome)document.getElementById('learn-home').style.display='none';
             document.getElementById('controls').style.display='none';
             document.getElementById('game-over-screen').style.display='none';
             document.getElementById('leaderboard-screen').style.display='block';
@@ -344,6 +864,8 @@
         }
         let score = 0;
         let correctCount = 0, wrongCount = 0, spawnTimeout;
+        let isPaused=false, wrongAttempts=[], missedCards=[];
+        const categoryNames={wind:'吹管',plucked:'彈撥',bowed:'拉弦',percussion:'打擊'};
         let gameDuration = 60;
         let remainingTime = 0;
         
@@ -424,6 +946,34 @@
         }
 
         // --- 遊戲核心 ---
+        function toggleFullscreen(){
+          if(!document.fullscreenElement){
+            document.documentElement.requestFullscreen?.().then(updateFullscreenButton).catch(()=>alert('此瀏覽器不允許全螢幕，可按 F11 試試看。'));
+          }else{document.exitFullscreen?.().then(updateFullscreenButton)}
+        }
+        function updateFullscreenButton(){document.getElementById('fullscreen-btn').textContent=document.fullscreenElement?'⛶ 離開全螢幕':'⛶ 全螢幕'}
+        document.addEventListener('fullscreenchange',updateFullscreenButton);
+        function togglePause(){
+          if(!isPlaying)return;
+          isPaused=!isPaused;
+          document.getElementById('pause-btn').textContent=isPaused?'▶ 繼續遊戲':'⏸ 暫停思考';
+          document.getElementById('pause-banner').style.display=isPaused?'flex':'none';
+          if(!isPaused){lastTick=performance.now();animationFrame=requestAnimationFrame(gameLoop)}
+        }
+        function returnHome(){
+          if(isPlaying&&!confirm('確定中途離開？這一局尚未結束，不會列入成績紀錄。'))return;
+          isPlaying=false;isPaused=false;
+          clearInterval(timerInterval);clearTimeout(spawnTimeout);cancelAnimationFrame(animationFrame);
+          document.getElementById('game-area').querySelectorAll('.instrument').forEach(el=>el.remove());
+          document.getElementById('pause-banner').style.display='none';
+          document.getElementById('pause-btn').textContent='⏸ 暫停思考';
+          document.getElementById('game-over-screen').style.display='none';
+          document.getElementById('leaderboard-screen').style.display='none';
+          document.getElementById('rules-screen').style.display='none';
+          document.getElementById('controls').style.display='none';
+          document.getElementById('learn-home').style.display='block';
+        }
+        let lastTick=0;
         function startGame() {
             const c=document.getElementById('class-name').value.trim();
             const t=document.getElementById('team-name').value.trim();
@@ -434,23 +984,28 @@
             score = 0;
             remainingTime = gameDuration;
             activeInstruments = [];
-            correctCount = 0; wrongCount = 0;
+            correctCount = 0; wrongCount = 0; wrongAttempts=[]; missedCards=[];
+            isPaused=false;
+            document.getElementById('pause-banner').style.display='none';
+            document.getElementById('pause-btn').textContent='⏸ 暫停思考';
             Object.keys(instrumentsData).forEach(type => document.getElementById("items-"+type).replaceChildren());
             clearTimeout(spawnTimeout); clearInterval(timerInterval); cancelAnimationFrame(animationFrame);
             isPlaying = true;
             updateUI();
             
             // 清空舊元素
-            document.getElementById('game-area').innerHTML = '';
+            document.getElementById('game-area').querySelectorAll('.instrument').forEach(el=>el.remove());
 
             // 計時器
             timerInterval = setInterval(() => {
+                if(isPaused)return;
                 remainingTime--;
                 updateUI();
                 if (remainingTime <= 0) endGame();
             }, 1000);
 
             spawnInstrument();
+            lastTick=performance.now();
             animationFrame = requestAnimationFrame(gameLoop);
         }
 
@@ -465,31 +1020,33 @@
 
         function spawnInstrument() {
             if (!isPlaying) return;
-            
+            if(isPaused){spawnTimeout=setTimeout(spawnInstrument,250);return}
             // 隨機選樂器
             const types = Object.keys(instrumentsData);
             const type = types[Math.floor(Math.random() * types.length)];
             const name = instrumentsData[type][Math.floor(Math.random() * instrumentsData[type].length)];
             
             const areaWidth = document.getElementById('game-area').offsetWidth;
-            const startX = Math.random() * (areaWidth - 100);
+            const startX = Math.random() * Math.max(0, areaWidth - 122);
 
             const el = document.createElement('div');
             el.className = 'instrument';
             el.dataset.type = type;
             el.dataset.name = name;
             el.style.left = startX + 'px';
-            el.style.top = '-120px';
-            el.innerHTML = `<img src="https://cdn-icons-png.flaticon.com/512/3293/3293816.png"><span>${name}</span>`;
+            el.style.top = '-92px';
+            const label=document.createElement('span');
+            label.textContent=name;
+            el.appendChild(label);
 
             setupDrag(el);
             document.getElementById('game-area').appendChild(el);
 
             activeInstruments.push({
                 el: el,
-                y: -120,
+                y: -92,
                 x: startX,
-                speed: speedSettings[currentSpeed].dropSpeed + Math.random()*0.5,
+                speed: (speedSettings[currentSpeed].dropSpeed + Math.random()*0.5) * Math.max(0.55, Math.min(1, document.getElementById('game-area').offsetHeight / 430)),
                 isDragging: false
             });
 
@@ -497,16 +1054,18 @@
         }
 
         function gameLoop() {
-            if (!isPlaying) return;
+            if (!isPlaying || isPaused) return;
 
+            const delta=Math.min(40,performance.now()-lastTick);lastTick=performance.now();
             const limitY = document.getElementById("game-area").offsetHeight + 10; 
 
             [...activeInstruments].forEach((item) => {
                 if (!item.isDragging) {
-                    item.y += item.speed;
+                    item.y += item.speed * (delta/16.67);
                     item.el.style.top = item.y + 'px';
 
                     if (item.y > limitY) {
+                        missedCards.push({name:item.el.dataset.name,type:item.el.dataset.type});
                         item.el.remove();
                         const idx = activeInstruments.indexOf(item);
                         if (idx >= 0) activeInstruments.splice(idx, 1);
@@ -526,7 +1085,7 @@
             };
 
             const dragStart = (e) => {
-                if (!isPlaying) return;
+                if (!isPlaying || isPaused) return;
                 const item = activeInstruments.find(i => i.el === el);
                 if (!item) return;
 
@@ -586,7 +1145,7 @@
 
         // 每次放開時立刻判斷：正確就放進籃子並加分，錯誤就扣分並回到原位置。
         function checkScoring(el, item) {
-            if (!isPlaying) return;
+            if (!isPlaying || isPaused) return;
             const card = el.getBoundingClientRect();
             const x = card.left + card.width / 2;
             const y = card.top + card.height / 2;
@@ -615,6 +1174,7 @@
             } else {
                 score -= 100;
                 wrongCount++;
+                wrongAttempts.push({name:el.dataset.name,wrong:target.dataset.type,correct:el.dataset.type});
                 playSound('wrong');
                 showFloatText(x, Math.max(80, target.getBoundingClientRect().top - 45), '−100', '#e63946');
                 // 卡片退回原位，不會卡在籃子下面，學生可再次分類
@@ -637,18 +1197,29 @@
         }
 
         function endGame() {
-            isPlaying = false;
+            isPlaying = false;isPaused=false;
+            document.getElementById("pause-banner").style.display="none";
             clearInterval(timerInterval);
             clearTimeout(spawnTimeout);
             cancelAnimationFrame(animationFrame);
+            // 最後仍在畫面上的樂器也列入賽後檢討。
+            for(const item of activeInstruments){
+                if(item?.el?.isConnected) missedCards.push({name:item.el.dataset.name,type:item.el.dataset.type});
+            }
             document.getElementById('final-score').innerText = score;
             document.getElementById('final-identity').textContent=sessionClass+'｜'+sessionTeam;
             const record={date:new Date().toLocaleString('zh-TW',{hour12:false}),className:sessionClass,teamName:sessionTeam,score,correct:correctCount,wrong:wrongCount,speed:currentSpeed,duration:gameDuration};
             const saved=saveRecords([...getRecords(),record]);
             document.querySelector('#game-over-screen div[style*="font-size:.85rem"]').textContent=saved?'此局成績已保存在目前瀏覽器':'瀏覽器無法永久儲存；請立即匯出 CSV 備份';
             document.getElementById("final-stats").textContent = `答對 ${correctCount} 題　｜　答錯 ${wrongCount} 次`;
+            const summary=document.getElementById('review-summary');
+            summary.textContent=`答錯 ${wrongAttempts.length} 次；未來得及分類 ${missedCards.length} 張。可跟學生逐題討論。`;
+            const list=document.getElementById('review-list');list.replaceChildren();
+            wrongAttempts.forEach(r=>{const li=document.createElement('li');li.textContent=`${r.name}：剛剛放到「${categoryNames[r.wrong]}」，正確是「${categoryNames[r.correct]}」`;list.appendChild(li)});
+            missedCards.forEach(r=>{const li=document.createElement('li');li.textContent=`⌛ ${r.name}：來不及分類，應放在「${categoryNames[r.type]}」`;list.appendChild(li)});
+            if(!wrongAttempts.length&&!missedCards.length){const li=document.createElement('li');li.textContent='太棒了！這組沒有錯題或漏接樂器。';list.appendChild(li)}
             document.getElementById('game-over-screen').style.display = 'flex';
-            document.getElementById('game-area').innerHTML = '';
+            document.getElementById('game-area').querySelectorAll('.instrument').forEach(el=>el.remove());
         }
 
     </script>
